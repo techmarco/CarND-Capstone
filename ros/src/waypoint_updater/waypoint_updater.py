@@ -3,8 +3,10 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 
 import math
+import numpy as np
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -21,7 +23,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 100 # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
@@ -32,21 +34,53 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-
-
-        self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
         # TODO: Add other member variables you need below
+        self.pose = None
+        self.waypoints = None
+        self.waypoints_count = 0
+        self.seq = 0
+        self.lights = []
+
+        # Final waypoints publisher
+        self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
         rospy.spin()
 
     def pose_cb(self, msg):
-        # TODO: Implement
-        pass
+        # determine waypoint closest to current pose
+        self.pose = msg
+
+        wp_amin = 0
+
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        dist = []
+        if self.waypoints != None:
+            for wp in self.waypoints:
+                dist.append(dl(wp.pose.pose.position, msg.pose.position))
+            wp_amin = np.argmin(dist)
+
+            lane = Lane()
+            lane.header.frame_id = msg.header.frame_id
+            lane.header.stamp = rospy.Time.now()
+            lane.header.seq = self.seq
+
+            range_list = range(wp_amin, (wp_amin + LOOKAHEAD_WPS))
+            range_list = [i % self.waypoints_count for i in range(wp_amin, wp_amin + LOOKAHEAD_WPS)]
+            for i in range_list:
+                self.set_waypoint_velocity(self.waypoints, i, 90.)
+
+            rospy.logerr(range_list)
+            lane.waypoints = [self.waypoints[i] for i in range_list]
+
+            self.final_waypoints_pub.publish(lane)
+
+            self.seq += 1
 
     def waypoints_cb(self, waypoints):
-        # TODO: Implement
-        pass
+        self.waypoints = waypoints.waypoints
+        self.waypoints_count = len(self.waypoints)
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
