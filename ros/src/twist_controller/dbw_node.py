@@ -57,6 +57,8 @@ class DBWNode(object):
         # self.controller = TwistController(<Arguments you wish to provide>)
 
         # TODO: Subscribe to all the topics you need to
+        self.dbw_sub = rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
+        self.dbw_enabled = False
 
         self.loop()
 
@@ -72,6 +74,8 @@ class DBWNode(object):
             #                                                     <any other argument you need>)
             # if <dbw is enabled>:
             #   self.publish(throttle, brake, steer)
+            if self.dbw_enabled:
+                self.publish(0.5, 0, 0)     # temporary publish
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
@@ -91,6 +95,9 @@ class DBWNode(object):
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
+
+    def dbw_enabled_cb(self, status):
+        self.dbw_enabled = status.data
 
 
 if __name__ == '__main__':
