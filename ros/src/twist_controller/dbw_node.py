@@ -53,7 +53,6 @@ class DBWNode(object):
         self.brake_pub = rospy.Publisher('/vehicle/brake_cmd',
                                          BrakeCmd, queue_size=1)
 
-        # TODO: Create `TwistController` object
         self.controller = Controller(vehicle_mass=vehicle_mass,
                                      fuel_capacity=fuel_capacity,
                                      brake_deadband=brake_deadband,
@@ -65,7 +64,6 @@ class DBWNode(object):
                                      max_lat_accel=max_lat_accel,
                                      max_steer_angle=max_steer_angle)
 
-        # TODO: Subscribe to all the topics you need to
         self.dbw_sub = rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
         self.dbw_enabled = False
 
@@ -83,15 +81,6 @@ class DBWNode(object):
     def loop(self):
         rate = rospy.Rate(50) # 50Hz
         while not rospy.is_shutdown():
-            # TODO: Get predicted throttle, brake, and steering using `twist_controller`
-            # You should only publish the control commands if dbw is enabled
-            # throttle, brake, steering = self.controller.control(<proposed linear velocity>,
-            #                                                     <proposed angular velocity>,
-            #                                                     <current linear velocity>,
-            #                                                     <dbw status>,
-            #                                                     <any other argument you need>)
-            # if <dbw is enabled>:
-            #   self.publish(throttle, brake, steer)
             throttle, brake, steer = self.controller.control(proposed_linear_velocity=self.proposed_linear_velocity,
                                                              proposed_angular_velocity=self.proposed_angular_velocity,
                                                              linear_velocity=self.linear_velocity,
@@ -127,7 +116,6 @@ class DBWNode(object):
 
     def current_velocity_cb(self, msg):
         self.linear_velocity = msg.twist.linear.x
-
 
 if __name__ == '__main__':
     DBWNode()
