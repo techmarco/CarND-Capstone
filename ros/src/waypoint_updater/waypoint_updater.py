@@ -111,7 +111,11 @@ class WaypointUpdater(object):
 
 
     def traffic_cb(self, msg):
-        if self.old_traffic == msg.data and self.stopped:
+        if self.old_traffic == msg.data and (self.stopped or abs(msg.data - self.wp_idx) <= 5):
+            if abs(msg.data - self.wp_idx) <= 5:
+                self.stopped = False
+                self.stopping = False
+                # rospy.logwarn('Ignoring old light due to proximity...')
             # rospy.logerr('Ignoring old light...')
             return
 
