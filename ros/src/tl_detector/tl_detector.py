@@ -53,8 +53,6 @@ class TLDetector(object):
         self.state_count = 0
 
         self.stop_line_positions = self.config['stop_line_positions']
-        rospy.logwarn('stop_line_positions ----')
-        rospy.logwarn(self.stop_line_positions)
         self.last_car_postion = None
 
         self.last_light_wp = -1
