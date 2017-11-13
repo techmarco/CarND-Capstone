@@ -180,9 +180,9 @@ class TLClassifier(object):
         # cv2.moveWindow('thresh_close', 1200, 600)
         # cv2.imshow('close2', thresh_close2_sans)
         # cv2.moveWindow('close2', 100, 600)
-        cv2.imshow('image', orig)
-        cv2.moveWindow('image', 320, 130)
-        cv2.waitKey(1)
+        # cv2.imshow('image', orig)
+        # cv2.moveWindow('image', 320, 130)
+        # cv2.waitKey(1)
 
         if green_light_votes > 0 and green_light_votes > (yellow_light_votes + red_light_votes):
             if self.light_color != 'green':
