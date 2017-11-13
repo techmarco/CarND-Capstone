@@ -194,8 +194,7 @@ class TLClassifier(object):
             if self.light_color != 'yellow':
                 rospy.logwarn('----------------------------------->>>> YELLOW')
                 self.light_color = 'yellow'
-            # return TrafficLight.YELLOW
-            return TrafficLight.RED
+            return TrafficLight.YELLOW
         elif red_light_votes > 0 and red_light_votes > (green_light_votes + yellow_light_votes):
             if self.light_color != 'red':
                 rospy.logwarn('----------------------------------->>>> RED')
