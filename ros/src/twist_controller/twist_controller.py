@@ -1,14 +1,11 @@
-from yaw_controller import YawController
 from pid import PID
 import rospy
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
 
-
 class Controller(object):
     def __init__(self, *args, **kwargs):
-        # TODO: Implement
         self.vehicle_mass = kwargs['vehicle_mass']
         self.fuel_capacity = kwargs['fuel_capacity']
         self.fuel_capacity = kwargs['fuel_capacity']
@@ -25,37 +22,40 @@ class Controller(object):
         self.brake = 0.
         self.steer = 0.
 
-        self.yaw_controller = YawController(self.wheel_base,
-                                            self.steer_ratio,
-                                            0.,
-                                            self.max_lat_accel,
-                                            self.max_steer_angle)
-
         # Kp, Ki, Kd, min, max
-        self.throttle_pid = PID(10, 1, 5, mn=0., mx=1.0)
-        self.brake_pid = PID(10, 1, 5, mn=0., mx=1.0)
+        self.throttle_pid = PID(0.3, 0, 0, mn=0., mx=1.0)
+        self.brake_pid = PID(5000, 0, 0, mn=0., mx=20000.0)
+        self.steer_pid = PID(0.5, 0, 0, mn=-0.5, mx=0.5)
 
     def control(self, *args, **kwargs):
-        # TODO: Change the arg, kwarg list to suit your needs
         # Return throttle, brake, steer
         self.plv = kwargs['proposed_linear_velocity']
         self.pav = kwargs['proposed_angular_velocity']
         self.lv = kwargs['linear_velocity']
         self.dbw_en = kwargs['dbw_enabled']
 
-        rospy.logwarn('Error between proposed linear velocity and linear velocity: %f' % (self.plv - self.lv))
-        rospy.logwarn('Error between proposed angular velocity and angular velocity (0): %f' % (self.pav))
+        # Simulation overrun check
+        if self.plv < 0:
+            rospy.logerr('Overrun error!!! Value: %f' % self.plv)
+            self.plv = abs(self.plv)
 
+        # DBW system disable (manual control)
         if self.dbw_en == False:
-            rospy.logerr('PID controllers reset')
             self.throttle_pid.reset()
             self.brake_pid.reset()
         else:
-            self.throttle = self.throttle_pid.step(self.plv - self.lv, 50)
-            self.brake = self.brake_pid.step(self.lv - self.plv, 50)
-
-        self.steer = self.yaw_controller.get_steering(self.lv, self.pav, self.lv)
-
-        rospy.logwarn('Throttle: %f, Brake: %f, Steer: %f' % (self.throttle, self.brake, self.steer))
+            # Brake hold
+            if abs(self.plv - self.lv) < 0.01 and self.lv > 0.0001:
+                self.brake = 1
+                self.throttle = 0
+                self.steer = 0
+            else:
+            # Normal operation
+                self.throttle = self.throttle_pid.step(self.plv - self.lv, 0.02)
+                if self.throttle < 0.01:
+                    self.brake = self.brake_pid.step(self.lv - self.plv, 0.02)
+                else:
+                    self.brake = 0
+                self.steer = self.steer_pid.step(self.lv * self.pav, 0.02)
 
         return self.throttle, self.brake, self.steer
