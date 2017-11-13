@@ -42,8 +42,9 @@ class WaypointUpdater(object):
         self.seq = 0
         self.stopping = False
         self.stopped = False
+        self.stop_complete = False
         self.lights = []
-        self.old_traffic = None
+        self.old_traffic = -2
         self.last_wp_idx = None
 
         self.max_velocity = self.kmph2mps(3*11.11) # 33.33 Km/h
@@ -61,9 +62,6 @@ class WaypointUpdater(object):
                 rospy.logwarn('~~~ Current waypint: %d ...' % self.wp_idx)
             self.last_wp_idx = self.wp_idx
 
-        if self.stopped:
-            return
-
         # determine waypoint closest to current pose
         self.pose = msg
 
@@ -76,7 +74,7 @@ class WaypointUpdater(object):
             wp_amin = np.argmin(dist)
             self.wp_idx = (wp_amin + 1) % self.waypoints_count
 
-            if self.stopping:
+            if self.stopping or self.stopped:
                 return
 
             lane = Lane()
@@ -111,12 +109,10 @@ class WaypointUpdater(object):
 
 
     def traffic_cb(self, msg):
-        if self.old_traffic == msg.data and (self.stopped or abs(msg.data - self.wp_idx) <= 5):
-            if abs(msg.data - self.wp_idx) <= 5:
-                self.stopped = False
-                self.stopping = False
-                # rospy.logwarn('Ignoring old light due to proximity...')
-            # rospy.logerr('Ignoring old light...')
+        if self.old_traffic == msg.data and self.stop_complete:
+            # rospy.logwarn('Ignoring old light due to proximity...')
+            self.stopped = False
+            self.stopping = False
             return
 
         if msg.data == -1:
@@ -124,9 +120,11 @@ class WaypointUpdater(object):
                 rospy.logwarn('~~~~~~~~~~~~~~~~~~~ Releasing brakes ...')
                 self.stopping = False
                 self.stopped = False
+                self.stop_complete = True
             elif self.stopping == True:
                 rospy.logwarn('~~~~~~~~~~~~~~~~~~~ Rolling stop ....')
                 self.stopping = False
+                self.stop_complete = True
             return
 
         if self.stopped == True:
@@ -134,7 +132,6 @@ class WaypointUpdater(object):
 
         range_list = [i % self.waypoints_count for i in range(self.wp_idx, self.wp_idx + LOOKAHEAD_WPS)]
         zeros_after = abs(msg.data - 5 - self.wp_idx) % self.waypoints_count
-
 
         start_vel = self.get_waypoint_velocity(self.waypoints[self.wp_idx])
         if start_vel == 0:
@@ -158,7 +155,9 @@ class WaypointUpdater(object):
         self.final_waypoints_pub.publish(lane)
 
         self.seq += 1
-        self.old_traffic = msg.data
+        if msg.data - self.old_traffic != 0:
+            self.old_traffic = msg.data
+            self.stop_complete = False
         self.stopping = True
 
 
